@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include "rotaryEncoder.hpp"
 #include "freertos/FreeRTOS.h"
 #include "AD9834.hpp"
 
