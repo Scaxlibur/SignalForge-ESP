@@ -1,5 +1,4 @@
-#ifndef __AD9834_HPP__
-#define __AD9834_HPP__
+#pragma once
 
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
@@ -58,4 +57,3 @@ void AD9834_Init(void);
  */
 void AD9834_Set_Freq(freq_register_t freq_register, uint32_t freq);
 	
-#endif
