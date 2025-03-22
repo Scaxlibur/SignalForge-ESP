@@ -36,7 +36,7 @@ void AD5626_init(gpio_num_t _MOSIpin  , gpio_num_t _SCLKpin, gpio_num_t _SYNCpin
     interface_config.command_bits = 0;
     interface_config.address_bits = 0;
     interface_config.mode = 3;                              //手册要求
-    interface_config.clock_speed_hz = SPI_MASTER_FREQ_8M;
+    interface_config.clock_speed_hz = SPI_MASTER_FREQ_20M;
     interface_config.spics_io_num = _SYNCpin;
     interface_config.queue_size = 6;
     interface_config.pre_cb = setLDAC;
