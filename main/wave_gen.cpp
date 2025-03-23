@@ -22,7 +22,7 @@ uint16_t waveTab[SAMPLE_PER_CYCLE];
  * @retval              无
  * @note                根据以上参数，构造一个波形发生器对象
  */
-WAVE_GEN::WAVE_GEN(double uMaxValue, double offSetValue, int duty, unsigned int freq, WAVE_TYPE_t wave_type)
+WAVE_GEN::WAVE_GEN(double uMaxValue, double offSetValue, int duty, uint16_t freq, WAVE_TYPE_t wave_type)
 {
     this->uMaxValue = uMaxValue;
     this->offSetValue = offSetValue;
@@ -38,9 +38,9 @@ WAVE_GEN::WAVE_GEN(double uMaxValue, double offSetValue, int duty, unsigned int 
  * @note                  对象销毁前自动调用
  */
 WAVE_GEN::~WAVE_GEN() {
-  ESP_ERROR_CHECK(gptimer_stop(waveCounterTimer_handle));
-  ESP_ERROR_CHECK(gptimer_disable(waveCounterTimer_handle));
-  ESP_ERROR_CHECK(gptimer_del_timer(waveCounterTimer_handle));
+    ESP_ERROR_CHECK(gptimer_stop(waveCounterTimer_handle));
+    ESP_ERROR_CHECK(gptimer_disable(waveCounterTimer_handle));
+    ESP_ERROR_CHECK(gptimer_del_timer(waveCounterTimer_handle));
 }
 
 /**
@@ -51,34 +51,23 @@ WAVE_GEN::~WAVE_GEN() {
  * @retval  无
  * @note    函数类型必须是bool
  */
-bool wave_alarm_cb_t(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx)
+IRAM_ATTR bool wave_alarm_cb_t(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx)
 {
     if (waveindex >= SAMPLE_PER_CYCLE)
     {
         waveindex = 0;
     }
     AD5626_writeValue(waveTab[waveindex]);
+    //txbuffer[0] = (uint8_t)(waveTab[waveindex] >> 8);
+    //txbuffer[1] = (uint8_t)(waveTab[waveindex] >> 0); 
+    //spi_trans.length = 16;
+    //spi_trans.tx_buffer = txbuffer;
+    //spi_trans.tx_data[0] = (waveTab[waveindex] >> 8);
+    //spi_trans.tx_data[1] = (waveTab[waveindex]);
+    //spi_device_polling_transmit(AD5626handle, &spi_trans);
     waveindex += wave_index_step;
     return true;
 }
-
-/**
- * @brief       配置硬件定时器和报警
- * @retval      无
- */
-/*
-bool WAVE_GEN::waveAlramTimer_config()
-{
-  //ESP_ERROR_CHECK(gptimer_new_timer(&waveCounterTimer_config, &waveCounterTimer_handle));             // 第一个参数是配置的地址，第二个参数是配置时钟的句柄地址
-  //ESP_ERROR_CHECK(gptimer_set_alarm_action(waveCounterTimer_handle, &waveCounterTimer_alarm_config)); // 配置报警
-  // 设定报警触发的回调函数
-  const gptimer_event_callbacks_t cbs = {// 下面将要用到的回调函数(必须是布尔类型)，结构体里面写回调函数的指针
-                                         .on_alarm = wave_alarm_cb_t
-                                         };
-  ESP_ERROR_CHECK(gptimer_register_event_callbacks(waveCounterTimer_handle, &cbs, NULL)); // 第一个参数是配置时钟的句柄地址，第二个是回调函数结构体的地址，第三个是传递给回调函数的值
-  return true;
-}
-*/
 
 /**
  * @brief       初始化波形发生器
@@ -92,19 +81,21 @@ void WAVE_GEN::initTimer()
     adjust_step();
     /** 设置闹钟每秒调用wave_alarm_cb_t函数1 tick为0.25us   => 1秒为1000000us */
     uint32_t T = (TIME_CLOCK_HZ * wave_index_step) / (freq * SAMPLE_PER_CYCLE);
-    this->waveCounterTimer_config = {
+    waveCounterTimer_config = {
         .clk_src = GPTIMER_CLK_SRC_DEFAULT,     // 时钟源,APB时钟最快不超过80MHz
         .direction = GPTIMER_COUNT_UP,          // 时钟计数方向
         .resolution_hz = TIME_CLOCK_HZ,         // 40MHz, 1 tick = 0.25us             //时钟频率配置
         .intr_priority = 0,                     // 中断优先级
     };
-    this->waveCounterTimer_alarm_config = {
+    waveCounterTimer_alarm_config = {
         .alarm_count = T,
         .reload_count = 0,
         .flags = {
             .auto_reload_on_alarm = true,
         }};
     /** 启动定时器 */
+    printf("currently freq = %u\n", freq);
+
     ESP_ERROR_CHECK(gptimer_new_timer(&waveCounterTimer_config, &waveCounterTimer_handle));
     ESP_ERROR_CHECK(gptimer_set_alarm_action(waveCounterTimer_handle, &waveCounterTimer_alarm_config));
 
@@ -115,6 +106,7 @@ void WAVE_GEN::initTimer()
     
     ESP_ERROR_CHECK(gptimer_enable(waveCounterTimer_handle));
     ESP_ERROR_CHECK(gptimer_start(waveCounterTimer_handle));
+
 }
 
 /**
@@ -133,9 +125,10 @@ void WAVE_GEN::updateTimer()
         .intr_priority = 0,                 // 中断优先级
     };
     adjust_step();
-    uint32_t dacTime = (1000000 * wave_index_step) / (freq * SAMPLE_PER_CYCLE);
+    //uint32_t dacTime = (1000000 * wave_index_step) / (freq * SAMPLE_PER_CYCLE);
+    uint32_t dacTick = (wave_index_step * TIME_CLOCK_HZ) / (freq * SAMPLE_PER_CYCLE);
     this->waveCounterTimer_alarm_config = {
-        .alarm_count = dacTime, // 到达这个数时警报
+        .alarm_count = dacTick, // 到达这个数时警报
         .reload_count = 0,      // 重载的数值
         .flags = {
             .auto_reload_on_alarm = true, // 是否自动重载
@@ -144,6 +137,8 @@ void WAVE_GEN::updateTimer()
     /** 启动警报 */
     ESP_ERROR_CHECK(gptimer_enable(waveCounterTimer_handle));
     ESP_ERROR_CHECK(gptimer_start(waveCounterTimer_handle));
+
+    printf("currently freq = %u\n", freq);
 }
 
 /**
@@ -163,10 +158,11 @@ void WAVE_GEN::waveGen(WAVE_TYPE_t wave_type)
             for (int i = 0; i < SAMPLE_PER_CYCLE; i++)
             {
             // sineValue = sin(((2 * PI) / SAMPLE_PER_CYCLE) * i) * (uMaxValue / 2) + offSetValue;
-            sineValue = sin(((2 * PI) / SAMPLE_PER_CYCLE) * i) + 1;
+            sineValue = sin(((2 * PI) / SAMPLE_PER_CYCLE) * i) + 1; //这里出来的范围是0-2
 
             // waveTab1[i] = (((int)(sineValue * ADC_MAX_VALUE / ADC_MAX_VOLTAGE)));
-            waveTab1[i] = ((uint16_t)(sineValue * (ADC_MAX_VALUE / 2)));
+            waveTab1[i] = ((uint16_t)(sineValue * (ADC_MAX_VALUE / 4)+1024));//控制到1020-3080
+
             }
             break;
         case SQUARE:
@@ -219,7 +215,7 @@ void WAVE_GEN::adjust_step()
 {
     //if (freq > 0 && freq <= 100)
     //{
-        wave_index_step = 5;
+        wave_index_step = 1;
     //}
     //else if (freq > 100 && freq <= 1500)
     //{
@@ -316,7 +312,7 @@ int WAVE_GEN::set_duty(int value)
  * @retval 0:设置成功 -1:超出范围
  * @note 无
  */
-int WAVE_GEN::set_freq(int value)
+int WAVE_GEN::set_freq(uint16_t value)
 {
     if (value > 0 && value <= 1500)
     {

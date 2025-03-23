@@ -2,11 +2,12 @@
 
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
+#include "driver/dedic_gpio.h"
+#include "hal/dedic_gpio_cpu_ll.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 /**
  * @brief   初始化函数，填入相应引脚参数即可
  * @param   _MOSIpin    芯片DI引脚，即数据输入引脚

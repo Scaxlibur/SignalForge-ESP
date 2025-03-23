@@ -6,9 +6,9 @@
 #include "driver/gptimer.h"
 #include "AD5626.h"
 
-#define WAVE_GEN_H
+
 #define SAMPLE_PER_CYCLE 1024
-#define ADC_MAX_VALUE 4095
+#define ADC_MAX_VALUE 4096          // 实际上的满量程是0-4095
 #define ADC_MAX_VOLTAGE 3.3f
 #define PI 3.14159
 #define TIME_CLOCK_HZ (40 * 1000 * 1000) //40MHz
@@ -25,10 +25,10 @@ class WAVE_GEN
 public:
     double uMaxValue = 3.3;             // 峰峰值
     double offSetValue = 1.65;          // 偏置电压
-    int duty = 50;                      // 占空比%(方波)
+    uint8_t duty = 50;                      // 占空比%(方波)
     WAVE_TYPE_t wave_type = SAWTOOTH;   // 波形种类
-    unsigned int freq = 100;            // 频率
-    unsigned int freq_old = 100;        // 上一次的频率
+    uint16_t freq = 100;            // 频率
+    uint16_t freq_old = 100;        // 上一次的频率
     //uint16_t* waveTab1 = new uint16_t[SAMPLE_PER_CYCLE];
     uint16_t waveTab1[SAMPLE_PER_CYCLE]; // 生成的波形数据
 
@@ -50,14 +50,13 @@ public:
     };
 
     
-    WAVE_GEN(double uMaxValue, double offSetValue, int duty, unsigned int freq, WAVE_TYPE_t wave_type);   //构造函数
-    ~WAVE_GEN();                                                                                        //析构函数
+    WAVE_GEN(double uMaxValue, double offSetValue, int duty, uint16_t freq, WAVE_TYPE_t wave_type);   //构造函数
+    ~WAVE_GEN();                                              //析构函数
     int set_uMaxValue(double value);
     int set_offSetValue(double value);
     int set_duty(int value);
-    int set_freq(int value);
+    int set_freq(uint16_t value);
     int set_wave_type(WAVE_TYPE_t wave_type);
-    // bool waveAlramTimer_config();
     void initTimer();
     void updateTimer();
     void get_waveindex();
